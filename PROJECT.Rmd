@@ -86,6 +86,8 @@ package.check <- lapply(packages, FUN = function(x) {
   }
   library(x, character.only = TRUE)
 })
+
+`%notin%` <- Negate(`%in%`)
 ```
 
 
@@ -93,6 +95,11 @@ package.check <- lapply(packages, FUN = function(x) {
 library(magrittr)
 
 df = readr::read_csv("product_sales.csv")
+
+# https://www.census.gov/data/tables/time-series/demo/popest/2020s-counties-total.html#par_textimage
+#Pagina web oficial del gobierno de USA
+
+data_usa = readr::read_csv("co-est2021-alldata.csv")
 df %>% head()
 ```
 
@@ -224,18 +231,33 @@ outliers.table(df$nb_site_visits)
 ```{r, include=F}
 library(stringr)
 
-states = "Alabama, Alaska, Arizona, Arkansas, California, Colorado, Connecticut, Delaware, Florida, Georgia, Hawaii, Idaho, Illinois, Indiana, Iowa, Kansas, Kentucky, Louisiana, Maine, Maryland, Massachusetts, Michigan, Minnesota, Mississippi, Missouri, Montana, Nebraska, Nevada, New Hampshire, New Jersey, New Mexico, New York, North Carolina, North Dakota, Ohio, Oklahoma, Oregon, Pennsylvania, Rhode Island, South Carolina, South Dakota, Tennessee, Texas, Utah, Vermont, Virginia, Washington, West Virginia, Wisconsin, Wyoming, Columbia"
+states = "Alabama, Alaska, Arizona, Arkansas, California, Colorado, Connecticut, Delaware, Florida, Georgia, Hawaii, Idaho, Illinois, Indiana, Iowa, Kansas, Kentucky, Louisiana, Maine, Maryland, Massachusetts, Michigan, Minnesota, Mississippi, Missouri, Montana, Nebraska, Nevada, New Hampshire, New Jersey, New Mexico, New York, North Carolina, North Dakota, Ohio, Oklahoma, Oregon, Pennsylvania, Rhode Island, South Carolina, South Dakota, Tennessee, Texas, Utah, Vermont, Virginia, Washington, West Virginia, Wisconsin, Wyoming, District of Columbia"
 
 stt_v = str_split(states, ", ")
 stt_v
 ```
 
 ```{r}
+all(!(levels(df$state) %notin% unique(data_usa$STNAME)))
+
 levels(df$state)
-#Estan todos, faltaria Columbia pero es un distrito
+#Estan todos, faltaria el distrito de Columbia en nuestro dataset pero nah
 ```
 
+```{r, fig.width = 7, fig.height=7}
+data_pop = data_usa %>% filter(STNAME == CTYNAME) %>% select(STNAME, POPESTIMATE2021)
 
+data_pop_state = df %>% 
+  group_by(state) %>% 
+  count() %>% 
+  inner_join(data_pop, by = c("state" = "STNAME"))
 
+ggplot(data_pop_state, aes(reorder(state, n), n, fill = POPESTIMATE2021)
+       ) + geom_col()+coord_flip()+
+  theme(axis.text.y = element_text(size = 10))
+```
 
+```{r}
+
+```
 
