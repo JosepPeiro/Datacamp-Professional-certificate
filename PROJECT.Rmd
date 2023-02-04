@@ -69,13 +69,16 @@ pre {
 </style>
 
 
+# Settings
+
 ```{r setup, include=FALSE}
 rm(list = ls())
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-packages = c("tidyverse","knitr", "magrittr", "dplyr", "ggplot2", "forcats", "stringr", "mice")
+packages = c("tidyverse","knitr", "magrittr", "dplyr", "ggplot2", "forcats", 
+             "stringr", "mice", "treemapify", "plotly", "tidyr")
 
 #This function check if each package is on the local machine
 #if a package is installed, it will be loaded
@@ -90,6 +93,8 @@ package.check <- lapply(packages, FUN = function(x) {
 `%notin%` <- Negate(`%in%`)
 ```
 
+
+# Importing Data
 
 ```{r}
 library(magrittr)
@@ -119,6 +124,7 @@ head(df, 10)
 apply(df, 2,function(x){sum(is.na(x))})
 ```
 
+# Data Validation
 
 ```{r}
 library(ggplot2)
@@ -139,6 +145,16 @@ df %<>% mutate(sales_method = fct_collapse(sales_method,
                                           "Email + Call" = c("Email + Call",
                                                              "em + call")))
 table(df$sales_method)
+
+ggplot(df %>% 
+         count(sales_method), 
+       aes(area = n, 
+           fill=sales_method, 
+           label=n))+
+  treemapify::geom_treemap() + 
+  treemapify::geom_treemap_text(place = "centre",grow = F, size = 30)
+
+
 ```
 
 ```{r}
@@ -257,7 +273,67 @@ ggplot(data_pop_state, aes(reorder(state, n), n, fill = POPESTIMATE2021)
   theme(axis.text.y = element_text(size = 10))
 ```
 
-```{r}
 
+# Exploratory Analysis
+
+## How many customers were there for each approach?
+```{r}
+ggplot(df %>% count(sales_method), aes(1, n, fill = sales_method))+
+  geom_col()+
+  coord_polar(theta = "y")+
+  xlim(c(0.2, 1 + 0.5))+
+  geom_text(aes(label = n),
+            position = position_stack(vjust = 0.5))
+```
+
+
+## What does the spread of the revenue look like overall? And for each method?
+```{r}
+library(plotly)
+
+em = density(df %>% filter(sales_method == "Email") %>% 
+               select(revenue) %>% pull(), na.rm = TRUE)
+ca = density(df %>% filter(sales_method == "Call") %>% 
+               select(revenue) %>% pull(), na.rm = TRUE)
+cm = density(df %>% filter(sales_method == "Email + Call") %>% 
+               select(revenue) %>% pull(), na.rm = TRUE)
+
+plot_ly() %>%
+  add_lines(x = ~ca$x, y = ~ca$y, name = "Call", fill = 'tozeroy') %>%
+  add_lines(x = ~cm$x, y = ~cm$y, name = "Email + Call", fill = 'tozeroy') %>%
+  add_lines(x = ~em$x, y = ~em$y, name = "Email", fill = 'tozeroy') %>%
+  layout(xaxis = list(title = 'Sales Method'),
+         yaxis = list(title = 'Density'))
+```
+
+```{r}
+df %>%
+  group_by(sales_method) %>%
+  do(
+    plot = plot_ly(data = ., x=~nb_sold, y=~revenue) %>%
+      add_markers(name = ~sales_method)
+  ) %>%
+  subplot(nrows = 3, shareY = TRUE, shareX = TRUE)
+```
+
+
+
+```{r}
+library(tidyr)
+turnout %>%
+  mutate(change=turnout2018-turnout2014) %>%
+  plot_geo(locationmode = 'USA-states') %>%
+  add_trace(z=~change, locations=~state) %>%
+  layout(geo = list(scope='usa'))
+
+df %>% 
+  group_by(state, sales_method) %>% 
+  summarise(revenue = sum(revenue, na.rm = T)) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = sales_method, values_from = revenue) %>% 
+  mutate(total = Call + Email + `Email + Call`,
+         perc_Call = Call/total,
+         perc_Email = Email/total,
+         perc_EmCall = `Email + Call`/total)
 ```
 
