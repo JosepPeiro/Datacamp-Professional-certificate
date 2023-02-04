@@ -68,7 +68,174 @@ pre {
 }
 </style>
 
+
 ```{r setup, include=FALSE}
+rm(list = ls())
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
+```{r}
+packages = c("tidyverse","knitr", "magrittr", "dplyr", "ggplot2", "forcats", "stringr", "mice")
+
+#This function check if each package is on the local machine
+#if a package is installed, it will be loaded
+#if any are not, the missing package(s) will be installed and loaded
+package.check <- lapply(packages, FUN = function(x) {
+  if (!require(x, character.only = TRUE)) {
+    install.packages(x, dependencies = TRUE,repos='http://cran.rediris.es')
+  }
+  library(x, character.only = TRUE)
+})
+```
+
+
+```{r}
+library(magrittr)
+
+df = readr::read_csv("product_sales.csv")
+df %>% head()
+```
+
+```{r}
+dim(df)
+df$week = as.integer(df$week)
+df$sales_method = as.factor(df$sales_method)
+df$nb_sold = as.integer(df$nb_sold)
+df$years_as_customer = as.integer(df$years_as_customer)
+df$nb_site_visits = as.integer(df$nb_site_visits)
+df$state = as.factor(df$state)
+
+head(df, 10)
+```
+
+```{r}
+apply(df, 2,function(x){sum(is.na(x))})
+```
+
+
+```{r}
+library(ggplot2)
+
+range(df$week)
+ggplot(df, aes(week)) + geom_bar()
+```
+
+```{r}
+library(dplyr)
+library(forcats)
+
+levels(df$sales_method)
+table(df$sales_method)
+
+df %<>% mutate(sales_method = fct_collapse(sales_method,
+                                           "Email" = c("email", "Email"),
+                                          "Email + Call" = c("Email + Call",
+                                                             "em + call")))
+table(df$sales_method)
+```
+
+```{r}
+length(unique(df$customer_id))
+```
+
+```{r}
+range(df$nb_sold)
+ggplot(df, aes(nb_sold)) + geom_bar()
+```
+
+```{r}
+range(df$revenue, na.rm = T)
+ggplot(df, aes(revenue)) + geom_histogram(binwidth = 5)
+ggplot() + geom_point(aes(1:length(df$revenue), is.na(df$revenue)))
+```
+
+```{r, include=F}
+mode <- function(x) {
+   return(as.numeric(names(which.max(table(x)))))
+}
+```
+
+```{r}
+range(df$years_as_customer)
+
+2023 - 1984
+
+ggplot(df, aes(years_as_customer)) + geom_bar()
+df %>% arrange(years_as_customer) %>% tail()
+
+df[which(df$years_as_customer > 39),]$years_as_customer = mode(df$years_as_customer)
+```
+
+```{r, include = F}
+outliers = function(x, method="3sigma"){
+  media = mean(x)
+  sigma = sd(x)
+  mediana = median(x)
+  q1 = quantile(x, 0.25)
+  q3 = quantile(x, 0.75)
+  iqr = IQR(x)
+  if (method == "3sigma"){
+    lowLim = round(media-3*sigma, 2)
+    upLim = round(media+3*sigma, 2)
+  } 
+  if(method=="percentil"){
+    lowLim=quantile(x, 0.05)
+    upLim=quantile(x, 0.95)
+  }
+  if(method=="boxplot"){
+    lowLim=q1-1.5*iqr
+    upLim=q3+1.5*iqr
+  }
+  if (method == "hampel"){
+    medabdev = mad(x)
+    lowLim=mediana-3*medabdev
+    upLim=mediana+3*medabdev
+  }
+  nOut = length(which(x<lowLim|x>upLim))
+  maxOut = max(x[which(x<lowLim)])
+  minIn = min(x[which(x>lowLim)])
+  maxIn = max(x[which(x<upLim)])
+  minOut = min(x[which(x>upLim)])
+  percOut = round(nOut/length(x), 5) 
+  resultado = cbind(nOut, lowLim, upLim, maxOut, minIn, maxIn, minOut, percOut)
+  rownames(resultado)=NULL
+  return (resultado)
+}
+
+outliers.table = function(x){
+  out_table = rbind(outliers(x, "3sigma"), 
+        outliers(x, "percentil"), 
+        outliers(x, "boxplot"), 
+        outliers(x, "hampel"))
+  out_table_method = cbind(c("3sigma", "percentil", "boxplot", "hampel"), 
+                           out_table)
+  
+  return(out_table_method)
+}
+```
+
+```{r}
+range(df$nb_site_visits)
+ggplot(df, aes(nb_site_visits)) + geom_histogram()
+outliers.table(df$nb_site_visits)
+```
+
+
+```{r, include=F}
+library(stringr)
+
+states = "Alabama, Alaska, Arizona, Arkansas, California, Colorado, Connecticut, Delaware, Florida, Georgia, Hawaii, Idaho, Illinois, Indiana, Iowa, Kansas, Kentucky, Louisiana, Maine, Maryland, Massachusetts, Michigan, Minnesota, Mississippi, Missouri, Montana, Nebraska, Nevada, New Hampshire, New Jersey, New Mexico, New York, North Carolina, North Dakota, Ohio, Oklahoma, Oregon, Pennsylvania, Rhode Island, South Carolina, South Dakota, Tennessee, Texas, Utah, Vermont, Virginia, Washington, West Virginia, Wisconsin, Wyoming, Columbia"
+
+stt_v = str_split(states, ", ")
+stt_v
+```
+
+```{r}
+levels(df$state)
+#Estan todos, faltaria Columbia pero es un distrito
+```
+
+
+
+
 
