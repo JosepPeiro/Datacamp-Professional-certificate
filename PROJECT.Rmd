@@ -247,7 +247,7 @@ outliers.table(df$nb_site_visits)
 ```{r, include=F}
 library(stringr)
 
-states = "Alabama, Alaska, Arizona, Arkansas, California, Colorado, Connecticut, Delaware, Florida, Georgia, Hawaii, Idaho, Illinois, Indiana, Iowa, Kansas, Kentucky, Louisiana, Maine, Maryland, Massachusetts, Michigan, Minnesota, Mississippi, Missouri, Montana, Nebraska, Nevada, New Hampshire, New Jersey, New Mexico, New York, North Carolina, North Dakota, Ohio, Oklahoma, Oregon, Pennsylvania, Rhode Island, South Carolina, South Dakota, Tennessee, Texas, Utah, Vermont, Virginia, Washington, West Virginia, Wisconsin, Wyoming, District of Columbia"
+states = "Alabama, Alaska, Arizona, Arkansas, California, Colorado, Connecticut, Delaware, District of Columbia, Florida, Georgia, Hawaii, Idaho, Illinois, Indiana, Iowa, Kansas, Kentucky, Louisiana, Maine, Maryland, Massachusetts, Michigan, Minnesota, Mississippi, Missouri, Montana, Nebraska, Nevada, New Hampshire, New Jersey, New Mexico, New York, North Carolina, North Dakota, Ohio, Oklahoma, Oregon, Pennsylvania, Rhode Island, South Carolina, South Dakota, Tennessee, Texas, Utah, Vermont, Virginia, Washington, West Virginia, Wisconsin, Wyoming"
 
 stt_v = str_split(states, ", ")
 stt_v
@@ -317,14 +317,8 @@ df %>%
 ```
 
 
-
 ```{r}
 library(tidyr)
-turnout %>%
-  mutate(change=turnout2018-turnout2014) %>%
-  plot_geo(locationmode = 'USA-states') %>%
-  add_trace(z=~change, locations=~state) %>%
-  layout(geo = list(scope='usa'))
 
 df %>% 
   group_by(state, sales_method) %>% 
@@ -335,5 +329,33 @@ df %>%
          perc_Call = Call/total,
          perc_Email = Email/total,
          perc_EmCall = `Email + Call`/total)
+
+df %>% group_by(state, sales_method) %>% 
+  summarise(sells = n()) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = sales_method, values_from = sells)%>% 
+  mutate(total = Call + Email + `Email + Call`,
+         perc_Call = Call/total,
+         perc_Email = Email/total,
+         perc_EmCall = `Email + Call`/total)
+```
+
+## Income by State
+```{r, include=F}
+abbr = 'AL" "AK" "AZ" "AR" "CA" "CO" "CT" "DE" "DC" "FL" "GA" "HI" "ID" "IL" "IN" "IA" "KS" "KY" "LA" "ME" "MD" "MA" "MI" "MN" "MS" "MO" "MT" "NE" "NV" "NH" "NJ" "NM" "NY" "NC" "ND" "OH" "OK" "OR" "PA" "RI" "SC" "SD" "TN" "TX" "UT" "VT" "VA" "WA" "WV" "WI" "WY'
+state.abbr = str_split(abbr, '" "')
+
+state_abbr = data.frame(state = stt_v, abbr = state.abbr)
+colnames(state_abbr) = c("state", "abbr")
+```
+
+```{r}
+df %>% 
+  group_by(state) %>% 
+  summarise(revenue = sum(revenue, na.rm = T)) %>%
+  inner_join(state_abbr, by = "state") %>% 
+  plot_geo(locationmode = 'USA-states') %>% 
+  add_trace(z=~revenue, locations=~abbr) %>%
+  layout(geo = list(scope='usa'))
 ```
 
