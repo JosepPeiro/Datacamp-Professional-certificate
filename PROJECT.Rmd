@@ -68,6 +68,7 @@ pre {
 }
 </style>
 
+![](DALL·E 2023-02-05 16.18.28 - The isotype of the company which distributes pens and notebooks.png)
 
 # Settings
 
@@ -153,8 +154,6 @@ ggplot(df %>%
            label=n))+
   treemapify::geom_treemap() + 
   treemapify::geom_treemap_text(place = "centre",grow = F, size = 30)
-
-
 ```
 
 ```{r}
@@ -302,9 +301,10 @@ plot_ly() %>%
   add_lines(x = ~ca$x, y = ~ca$y, name = "Call", fill = 'tozeroy') %>%
   add_lines(x = ~cm$x, y = ~cm$y, name = "Email + Call", fill = 'tozeroy') %>%
   add_lines(x = ~em$x, y = ~em$y, name = "Email", fill = 'tozeroy') %>%
-  layout(xaxis = list(title = 'Sales Method'),
+  layout(xaxis = list(title = 'Revenue'),
          yaxis = list(title = 'Density'))
 ```
+
 
 ```{r}
 df %>%
@@ -362,6 +362,10 @@ diff %>% ggplot(aes(dif_EmCall, reorder(state, dif_EmCall))) +
   geom_point(size = 3)
 ```
 
+```{r}
+ggplot(df, aes(nb_site_visits, revenue, color = sales_method)) + geom_jitter()
+```
+
 ## Income by State
 ```{r, include=F}
 abbr = 'AL" "AK" "AZ" "AR" "CA" "CO" "CT" "DE" "DC" "FL" "GA" "HI" "ID" "IL" "IN" "IA" "KS" "KY" "LA" "ME" "MD" "MA" "MI" "MN" "MS" "MO" "MT" "NE" "NV" "NH" "NJ" "NM" "NY" "NC" "ND" "OH" "OK" "OR" "PA" "RI" "SC" "SD" "TN" "TX" "UT" "VT" "VA" "WA" "WV" "WI" "WY'
@@ -379,5 +383,48 @@ df %>%
   plot_geo(locationmode = 'USA-states') %>% 
   add_trace(z=~revenue, locations=~abbr) %>%
   layout(geo = list(scope='usa'))
+```
+
+```{r}
+df %>% 
+  group_by(state) %>% 
+  summarise(revenue = sum(revenue, na.rm = T)) %>%
+  inner_join(state_abbr, by = "state") %>% 
+  inner_join(data_pop, by = c("state" = "STNAME")) %>% 
+  mutate(rev_per_pop = revenue/POPESTIMATE2021) %>% 
+  plot_geo(locationmode = 'USA-states') %>% 
+  add_trace(z=~rev_per_pop, locations=~abbr) %>%
+  layout(geo = list(scope='usa'))
+```
+
+## Was there any difference in revenue over time for each of the methods?
+```{r}
+stats_week = df %>% 
+  group_by(week, sales_method) %>% 
+  summarise(total_revenue = sum(revenue, na.rm = T),
+  num_sells = n(),
+  avg_revenue = mean(revenue, na.rm = T))
+
+ggplot(stats_week)+
+  geom_line(aes(-week, avg_revenue, color = sales_method))
+ggplot(stats_week)+
+  geom_line(aes(-week, num_sells, color = sales_method))
+ggplot(stats_week)+
+  geom_line(aes(-week, total_revenue, color = sales_method))
+```
+
+```{r}
+stats_week = df %>% 
+  group_by(years_as_customer, sales_method) %>% 
+  summarise(total_revenue = sum(revenue, na.rm = T),
+  num_sells = n(),
+  avg_revenue = mean(revenue, na.rm = T))
+
+ggplot(stats_week)+
+  geom_line(aes(-years_as_customer, avg_revenue, color = sales_method))
+ggplot(stats_week)+
+  geom_line(aes(-years_as_customer, num_sells, color = sales_method))
+ggplot(stats_week)+
+  geom_line(aes(-years_as_customer, total_revenue, color = sales_method))
 ```
 
