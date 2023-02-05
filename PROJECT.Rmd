@@ -320,7 +320,7 @@ df %>%
 ```{r}
 library(tidyr)
 
-df %>% 
+perc_revenue = df %>% 
   group_by(state, sales_method) %>% 
   summarise(revenue = sum(revenue, na.rm = T)) %>% 
   ungroup() %>% 
@@ -330,7 +330,7 @@ df %>%
          perc_Email = Email/total,
          perc_EmCall = `Email + Call`/total)
 
-df %>% group_by(state, sales_method) %>% 
+perc_sells = df %>% group_by(state, sales_method) %>% 
   summarise(sells = n()) %>% 
   ungroup() %>% 
   pivot_wider(names_from = sales_method, values_from = sells)%>% 
@@ -338,6 +338,28 @@ df %>% group_by(state, sales_method) %>%
          perc_Call = Call/total,
          perc_Email = Email/total,
          perc_EmCall = `Email + Call`/total)
+
+diff = perc_revenue %>% inner_join(perc_sells, 
+                            by = "state", 
+                            suffix = c("_revenue","_sells")) %>% 
+  mutate(dif_Call = perc_Call_revenue - perc_Call_sells,
+         dif_Email = perc_Email_revenue - perc_Email_sells,
+         dif_EmCall = perc_EmCall_revenue - perc_EmCall_sells)
+
+diff %>% ggplot(aes(dif_Call, reorder(state, dif_Call))) +
+  geom_segment(aes(x = 0, y = reorder(state, dif_Call),
+                   xend = dif_Call, yend = state))+
+  geom_point(size = 3)
+
+diff %>% ggplot(aes(dif_Email, reorder(state, dif_Email))) +
+  geom_segment(aes(x = 0, y = reorder(state, dif_Email),
+                   xend = dif_Email, yend = state))+
+  geom_point(size = 3)
+
+diff %>% ggplot(aes(dif_EmCall, reorder(state, dif_EmCall))) +
+  geom_segment(aes(x = 0, y = reorder(state, dif_EmCall),
+                   xend = dif_EmCall, yend = state))+
+  geom_point(size = 3)
 ```
 
 ## Income by State
