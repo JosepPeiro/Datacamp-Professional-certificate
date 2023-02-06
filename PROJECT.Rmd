@@ -79,7 +79,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 packages = c("tidyverse","knitr", "magrittr", "dplyr", "ggplot2", "forcats", 
-             "stringr", "mice", "treemapify", "plotly", "tidyr")
+             "stringr", "mice", "treemapify", "plotly", "tidyr", "fitdistrplus")
 
 #This function check if each package is on the local machine
 #if a package is installed, it will be loaded
@@ -138,9 +138,6 @@ ggplot(df, aes(week)) + geom_bar()
 library(dplyr)
 library(forcats)
 
-levels(df$sales_method)
-table(df$sales_method)
-
 df %<>% mutate(sales_method = fct_collapse(sales_method,
                                            "Email" = c("email", "Email"),
                                           "Email + Call" = c("Email + Call",
@@ -168,7 +165,10 @@ ggplot(df, aes(nb_sold)) + geom_bar()
 ```{r}
 range(df$revenue, na.rm = T)
 ggplot(df, aes(revenue)) + geom_histogram(binwidth = 5)
-ggplot() + geom_point(aes(1:length(df$revenue), is.na(df$revenue)))
+ggplot() + geom_point(aes(1:length(df$revenue), is.na(df$revenue)))+
+	labs(x = "Position in the dataframe",
+         y = "Missing value",
+         title = "The position of NA around the dataframe")
 ```
 
 ```{r, include=F}
@@ -182,10 +182,10 @@ range(df$years_as_customer)
 
 2023 - 1984
 
-ggplot(df, aes(years_as_customer)) + geom_bar()
 df %>% arrange(years_as_customer) %>% tail()
 
 df[which(df$years_as_customer > 39),]$years_as_customer = mode(df$years_as_customer)
+ggplot(df, aes(years_as_customer)) + geom_bar()
 ```
 
 ```{r, include = F}
@@ -281,12 +281,19 @@ ggplot(df %>% count(sales_method), aes(1, n, fill = sales_method))+
   geom_col()+
   coord_polar(theta = "y")+
   xlim(c(0.2, 1 + 0.5))+
-  geom_text(aes(label = n),
+  geom_text(aes(label = round(n/150, 4)),
             position = position_stack(vjust = 0.5))
 ```
 
 
 ## What does the spread of the revenue look like overall? And for each method?
+```{r}
+ggplot(df, aes(revenue)) + geom_boxplot(na.rm = T)
+ggplot(df, aes(revenue, fill = 88228))+geom_density(na.rm = T, show.legend = F, alpha = 0.1)
+
+outliers.table(na.omit(df$revenue))
+```
+
 ```{r}
 library(plotly)
 
@@ -364,6 +371,7 @@ diff %>% ggplot(aes(dif_EmCall, reorder(state, dif_EmCall))) +
 
 ```{r}
 ggplot(df, aes(nb_site_visits, revenue, color = sales_method)) + geom_jitter()
+with(df %>% na.omit(), cor(nb_site_visits, revenue))
 ```
 
 ## Income by State
@@ -406,11 +414,11 @@ stats_week = df %>%
   avg_revenue = mean(revenue, na.rm = T))
 
 ggplot(stats_week)+
-  geom_line(aes(-week, avg_revenue, color = sales_method))
+  geom_line(aes(week, avg_revenue, color = sales_method))
 ggplot(stats_week)+
-  geom_line(aes(-week, num_sells, color = sales_method))
+  geom_line(aes(week, num_sells, color = sales_method))
 ggplot(stats_week)+
-  geom_line(aes(-week, total_revenue, color = sales_method))
+  geom_line(aes(week, total_revenue, color = sales_method))
 ```
 
 ```{r}
@@ -426,5 +434,26 @@ ggplot(stats_week)+
   geom_line(aes(-years_as_customer, num_sells, color = sales_method))
 ggplot(stats_week)+
   geom_line(aes(-years_as_customer, total_revenue, color = sales_method))
+```
+
+```{r}
+library(fitdistrplus)
+
+na_omit = df %>% na.omit()
+descdist(na_omit$revenue)
+plot(fitdist(na_omit$revenue, "gamma"))
+
+descdist((na_omit %>% filter(sales_method == "Email"))$revenue)
+plot(fitdist((na_omit %>% filter(sales_method == "Email"))$revenue, "gamma"))
+plot(fitdist((na_omit %>% filter(sales_method == "Email"))$revenue, "norm"))
+
+descdist((na_omit %>% filter(sales_method == "Call"))$revenue)
+plot(fitdist((na_omit %>% filter(sales_method == "Call"))$revenue, "gamma"))
+plot(fitdist((na_omit %>% filter(sales_method == "Call"))$revenue, "norm"))
+plot(fitdist((na_omit %>% filter(sales_method == "Call"))$revenue, "unif"))
+
+descdist((na_omit %>% filter(sales_method == "Email + Call"))$revenue)
+plot(fitdist((na_omit %>% filter(sales_method == "Email + Call"))$revenue, "unif"))
+plot(fitdist((na_omit %>% filter(sales_method == "Email + Call"))$revenue, "norm"))
 ```
 
